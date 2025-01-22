@@ -18,9 +18,15 @@ interface Stop {
   coordinates: [number, number];
 }
 
-interface SearchResult {
-  place_name: string;
-  center: [number, number];
+interface SemboResult {
+  id: string;
+  name: string;
+  type: string;
+  country: string;
+  coordinates: {
+    latitude: number;
+    longitude: number;
+  };
 }
 
 const MapView = () => {
@@ -33,7 +39,7 @@ const MapView = () => {
   const [isTokenSet, setIsTokenSet] = useState(false);
   const [newStopName, setNewStopName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<SemboResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   const handleSetToken = () => {
@@ -84,30 +90,43 @@ const MapView = () => {
       return;
     }
 
+    setIsSearching(true);
     try {
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxToken}&country=se`
+        `https://www.sembo.fr/d/accommodation/categorizedautocompletesuggestions?term=${encodeURIComponent(query)}`
       );
       const data = await response.json();
-      setSearchResults(data.features.map((feature: any) => ({
-        place_name: feature.place_name,
-        center: feature.center
-      })));
+      
+      // Transformera Sembo-resultaten till vårt format
+      const transformedResults = data.suggestions.map((suggestion: any) => ({
+        id: suggestion.id,
+        name: suggestion.name,
+        type: suggestion.type,
+        country: suggestion.country,
+        coordinates: {
+          latitude: suggestion.coordinates?.latitude,
+          longitude: suggestion.coordinates?.longitude
+        }
+      }));
+      
+      setSearchResults(transformedResults);
     } catch (error) {
       console.error('Error searching locations:', error);
       toast({
         title: "Sökfel",
         description: "Kunde inte söka efter platser just nu"
       });
+    } finally {
+      setIsSearching(false);
     }
   };
 
-  const handleSearchSelect = (result: SearchResult) => {
+  const handleSearchSelect = (result: SemboResult) => {
     if (newStopName) {
       addStop({
         id: Date.now().toString(),
         name: newStopName,
-        coordinates: result.center
+        coordinates: [result.coordinates.longitude, result.coordinates.latitude]
       });
       setNewStopName('');
       setSearchQuery('');
@@ -115,7 +134,7 @@ const MapView = () => {
       
       if (map.current) {
         map.current.flyTo({
-          center: result.center,
+          center: [result.coordinates.longitude, result.coordinates.latitude],
           zoom: 12
         });
       }
@@ -265,7 +284,7 @@ const MapView = () => {
             <div className="flex space-x-2">
               <Input
                 type="text"
-                placeholder="Sök plats..."
+                placeholder="Sök destination..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full"
@@ -276,20 +295,21 @@ const MapView = () => {
             </div>
             {searchResults.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg max-h-60 overflow-auto">
-                {searchResults.map((result, index) => (
+                {searchResults.map((result) => (
                   <button
-                    key={index}
+                    key={result.id}
                     className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
                     onClick={() => handleSearchSelect(result)}
                   >
-                    {result.place_name}
+                    <div className="font-medium">{result.name}</div>
+                    <div className="text-sm text-gray-500">{result.country}</div>
                   </button>
                 ))}
               </div>
             )}
           </div>
           <p className="text-sm text-gray-500">
-            Klicka på kartan eller sök efter en plats för att lägga till ett stopp
+            Sök efter en destination eller klicka på kartan för att lägga till ett stopp
           </p>
         </div>
 
