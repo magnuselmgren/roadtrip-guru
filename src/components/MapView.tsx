@@ -27,12 +27,25 @@ const MapView = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
-  const [mapboxToken, setMapboxToken] = useState('');
+  const [mapboxToken, setMapboxToken] = useState(() => {
+    return localStorage.getItem('mapbox_token') || '';
+  });
   const [isTokenSet, setIsTokenSet] = useState(false);
   const [newStopName, setNewStopName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  const handleSetToken = () => {
+    if (mapboxToken) {
+      localStorage.setItem('mapbox_token', mapboxToken);
+      setIsTokenSet(true);
+      toast({
+        title: "Token sparad",
+        description: "Din Mapbox token har sparats"
+      });
+    }
+  };
 
   const initializeMap = () => {
     if (!mapContainer.current || !mapboxToken) return;
@@ -221,7 +234,7 @@ const MapView = () => {
             className="w-full"
           />
           <Button 
-            onClick={() => setIsTokenSet(true)}
+            onClick={handleSetToken}
             className="w-full"
             disabled={!mapboxToken}
           >
