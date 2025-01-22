@@ -4,6 +4,13 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { toast } from './ui/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from 'lucide-react';
 
 interface Stop {
   id: string;
@@ -17,6 +24,7 @@ const MapView = () => {
   const [stops, setStops] = useState<Stop[]>([]);
   const [mapboxToken, setMapboxToken] = useState('');
   const [isTokenSet, setIsTokenSet] = useState(false);
+  const [newStopName, setNewStopName] = useState('');
 
   const initializeMap = () => {
     if (!mapContainer.current || !mapboxToken) return;
@@ -33,11 +41,19 @@ const MapView = () => {
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     map.current.on('click', (e) => {
-      addStop({
-        id: Date.now().toString(),
-        name: `Stop ${stops.length + 1}`,
-        coordinates: [e.lngLat.lng, e.lngLat.lat]
-      });
+      if (newStopName) {
+        addStop({
+          id: Date.now().toString(),
+          name: newStopName,
+          coordinates: [e.lngLat.lng, e.lngLat.lat]
+        });
+        setNewStopName('');
+      } else {
+        toast({
+          title: "Ange ett namn",
+          description: "Vänligen ange ett namn för stoppet först"
+        });
+      }
     });
   };
 
@@ -48,8 +64,8 @@ const MapView = () => {
       return updated;
     });
     toast({
-      title: "Stop Added",
-      description: `Added ${newStop.name} to your route`
+      title: "Stopp tillagt",
+      description: `${newStop.name} har lagts till i din rutt`
     });
   };
 
@@ -114,7 +130,7 @@ const MapView = () => {
     
     addStop({
       id: Date.now().toString(),
-      name: `Suggested Stop ${stops.length + 1}`,
+      name: `Föreslaget stopp ${stops.length + 1}`,
       coordinates: midpoint
     });
   };
@@ -129,10 +145,10 @@ const MapView = () => {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4 space-y-4">
         <div className="glass-panel p-6 rounded-lg max-w-md w-full space-y-4">
-          <h2 className="text-xl font-semibold text-center">Enter Mapbox Token</h2>
+          <h2 className="text-xl font-semibold text-center">Ange Mapbox Token</h2>
           <Input
             type="text"
-            placeholder="Enter your Mapbox token"
+            placeholder="Ange din Mapbox token"
             value={mapboxToken}
             onChange={(e) => setMapboxToken(e.target.value)}
             className="w-full"
@@ -142,10 +158,10 @@ const MapView = () => {
             className="w-full"
             disabled={!mapboxToken}
           >
-            Set Token
+            Sätt token
           </Button>
           <p className="text-sm text-gray-500 text-center">
-            You can find your Mapbox token in your Mapbox account dashboard
+            Du hittar din Mapbox token i din Mapbox kontrollpanel
           </p>
         </div>
       </div>
@@ -155,31 +171,51 @@ const MapView = () => {
   return (
     <div className="flex h-screen">
       <div className="w-1/4 p-4 glass-panel m-4 rounded-lg space-y-4 overflow-y-auto">
-        <h2 className="text-xl font-semibold">Your Road Trip</h2>
+        <h2 className="text-xl font-semibold">Din bilsemester</h2>
+        
+        <div className="space-y-2">
+          <Input
+            type="text"
+            placeholder="Ange namn på stopp"
+            value={newStopName}
+            onChange={(e) => setNewStopName(e.target.value)}
+            className="w-full"
+          />
+          <p className="text-sm text-gray-500">
+            Klicka på kartan för att lägga till stoppet
+          </p>
+        </div>
+
         <div className="space-y-2">
           {stops.map((stop, index) => (
             <div key={stop.id} className="flex items-center justify-between p-2 bg-white/50 rounded-lg">
-              <span>{stop.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeStop(stop.id)}
-              >
-                Remove
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between">
+                    {stop.name}
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full">
+                  <DropdownMenuItem onClick={() => removeStop(stop.id)}>
+                    Ta bort stopp
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
         </div>
+
         <Button 
           onClick={suggestStop}
           className="w-full"
           disabled={stops.length < 1}
         >
-          Suggest Next Stop
+          Föreslå nästa stopp
         </Button>
       </div>
       <div className="flex-1 p-4">
-        <div ref={mapContainer} className="map-container h-full" />
+        <div ref={mapContainer} className="map-container h-full rounded-lg" />
       </div>
     </div>
   );
